@@ -107,7 +107,8 @@ bool Application::onUpdate(const float fElapsedTime, const float fTotalTime)
 			for (int x = 0; x < nx; ++x){
 				float value = h_O[y * nx + x] / 100.0;
 
-				sf::Color color = rgb((1. - value)*(1. - value) * 2. / 3.);
+				sf::Color color = rgb((value + 1.0) / 2. * 2. / 3.);
+				// sf::Color color = rgb((1. - value)*(1. - value) * 2. / 3.);
 				image.setPixel(x, y, color);
 			}
 		}

@@ -38,29 +38,45 @@ CUDA_Config config;
  * \param[in] i      Row index
  * \param[in] j      Column index
  * \param[in] width  The width of the area
+ * \param[in] array_index  The index (0 or 1) for the array position
  *
  * \returns An index in the unrolled 1D array.
  */
-int __host__ __device__ getIndex(const int y, const int x, const int width)
+int __host__ __device__ getIndex(const int y, const int x, const int width,
+                                 const int height,
+                                 const int array_index)
 {
-    return y * width + x;
+    return (y * width + x) + (array_index * height * width);
 }
 
-__device__ float computeRHS(const int x, const int y, const float* in, float* out,
-                            const int nx, const int ny, const float dx2, const float dy2, const float aTimesDt)
+__device__ void computeCurrentCell(const int x, const int y, const float* in, float* out,
+                                   const int nx, const int ny, const float dx2, const float dy2,
+                                   const float aTimesDt)
 {
-    float left = (x == 0) ? in[getIndex(y, x + 1, nx)] : in[getIndex(y, x - 1, nx)];
+    float left = (x == 0) ? in[getIndex(y, x + 1, nx, ny, 0)] : in[getIndex(y, x - 1, nx, ny,
+                 0)];
 
-    float right = (x == nx - 1) ? in[getIndex(y, x - 1, nx)] : in[getIndex(y, x + 1, nx)];
+    float right = (x == nx - 1) ? in[getIndex(y, x - 1, nx, ny, 0)] : in[getIndex(y, x + 1,
+                  nx,
+                  nx, 0)];
 
-    float up = (y == 0) ? in[getIndex(y + 1, x, nx)] : in[getIndex(y - 1, x, nx)];
+    float up = (y == 0) ? in[getIndex(y + 1, x, nx, ny, 0)] : in[getIndex(y - 1, x, nx, ny,
+               0)];
 
-    float down = (y == ny - 1) ? in[getIndex(y - 1, x, nx)] : in[getIndex(y + 1, x, nx)];
+    float down = (y == ny - 1) ? in[getIndex(y - 1, x, nx, ny, 0)] : in[getIndex(y + 1, x, nx,
+                 nx, 0)];
 
-    float current_cell = in[getIndex(y, x, nx)];
-
-    return current_cell + aTimesDt * ((left - 2.0 * current_cell + right) / dx2 +
-                                      (up - 2.0 * current_cell + down) / dy2);
+    float current_cell_0 = in[getIndex(y, x, nx, ny, 0)];
+    float current_cell_1 = in[getIndex(y, x, nx, ny, 1)];
+    //old
+    // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt *
+    // ((left - 2.0 * current_cell_0 + right) / dx2 +
+    // (up - 2.0 * current_cell_0 + down) / dy2);
+    // new
+    out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
+    out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
+                                     ((left - 2.0 * current_cell_0 + right) / dx2 +
+                                      (up - 2.0 * current_cell_0 + down) / dy2);
 }
 
 __global__ void evolveKernel(const float* Un, float* Unp1, const int nx, const int ny,
@@ -69,12 +85,12 @@ __global__ void evolveKernel(const float* Un, float* Unp1, const int nx, const i
     int i = threadIdx.x + blockIdx.x * blockDim.x;
 
     for (int w = i * WORK_PER_THREAD; w < (i + 1) * WORK_PER_THREAD ; ++w) {
-        if (w < nx) {
+        if (w < nx) { // need to check this because cuda blocks can have threads that go past the image boundaries
             int j = threadIdx.y + blockIdx.y * blockDim.y;
 
             if (j < ny) {
                 // Explicit scheme
-                Unp1[getIndex(j, w, nx)] = computeRHS(w, j, Un, Unp1, nx, ny, dx2, dy2, aTimesDt);
+                computeCurrentCell(w, j, Un, Unp1, nx, ny, dx2, dy2, aTimesDt);
             }
         }
     }
@@ -93,7 +109,7 @@ __global__ void addHeatKernel(const int center_x, const int center_y, const floa
         int distance = dx * dx + dy * dy;
 
         if (distance <= radius * radius)
-            d_O1[getIndex(y, x, nx)] = amount;
+            d_O1[getIndex(y, x, nx, ny, 0)] = amount;
     }
 }
 
@@ -110,7 +126,7 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
 
     for (int i = 0; i < nx; i++) {
         for (int j = 0; j < ny; j++) {
-            int index = getIndex(i, j, ny);
+            int index = getIndex(i, j, ny, nx, 0);
             // Distance of point i, j from the origin
             float ds2 = (i - nx / 2) * (i - nx / 2) + (j - ny / 2) * (j - ny / 2);
 
@@ -123,22 +139,27 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
     }
 
     // simulation settings
-    config.a = 0.5;
+    config.a = 1.0;
     config.dx = 0.005;
     config.dy = 0.005;
     config.dx2 = config.dx * config.dx;
     config.dy2 = config.dy * config.dy;
     config.dt = config.dx2 * config.dy2 / (2.0 * config.a * (config.dx2 + config.dy2));
+    // config.dt = config.dx * config.dy / (2.0 * config.a * (config.dx + config.dy));
 
     // streams for reading and computation
     cudaStreamCreate(&config.comp_stream);
     cudaStreamCreate(&config.read_stream);
 
     // initialize memory on GPU
-    cudaMalloc((void**)&config.d_O1, config.numElements * sizeof(float));
-    cudaMalloc((void**)&config.d_O2, config.numElements * sizeof(float));
+    cudaMalloc((void**)&config.d_O1, config.numElements * 2 * sizeof(float));
+    cudaMalloc((void**)&config.d_O2, config.numElements * 2 * sizeof(float));
 
-    // copy initial state to GPU
+    // set PI initial values
+    cudaMemset(&config.d_O1[config.numElements], 0, config.numElements * sizeof(float));
+    cudaMemset(&config.d_O2[config.numElements], 0, config.numElements * sizeof(float));
+
+    // copy initial state to GPU, Phi initial values
     cudaMemcpy(config.d_O1, h_O, config.numElements * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(config.d_O2, h_O, config.numElements * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -156,7 +177,9 @@ void __host__ d_launchKernel(const int step, const int outputEvery, float* h_O)
      config.a * config.dt);
 
     if (config.copy) {
-        cudaMemcpyAsync(h_O, config.d_O1, config.numElements * sizeof(float),
+        int index = 0;
+        cudaMemcpyAsync(h_O, &config.d_O1[config.numElements * index],
+                        config.numElements * sizeof(float),
                         cudaMemcpyDeviceToHost,
                         config.read_stream);
         cudaStreamSynchronize(config.read_stream);
