@@ -1,10 +1,12 @@
 #include "evolve.h"
 #include <stdio.h>
 #include <algorithm>
+#include <cmath>
 
 #define BLOCK_SIZE_X 8
 #define BLOCK_SIZE_Y 16
 #define WORK_PER_THREAD 2
+#define TAU 2.5f // damping constant
 
 typedef struct CUDA_Config {
     CUDA_Config() {}
@@ -76,7 +78,7 @@ __device__ void computeCurrentCell(const int x, const int y, const float* in, fl
     out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
     out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
                                      ((left - 2.0 * current_cell_0 + right) / dx2 +
-                                      (up - 2.0 * current_cell_0 + down) / dy2);
+                                      (up - 2.0 * current_cell_0 + down) / dy2 - TAU * current_cell_1);
 }
 
 __global__ void evolveKernel(const float* Un, float* Unp1, const int nx, const int ny,
@@ -109,7 +111,8 @@ __global__ void addHeatKernel(const int center_x, const int center_y, const floa
         int distance = dx * dx + dy * dy;
 
         if (distance <= radius * radius)
-            d_O1[getIndex(y, x, nx, ny, 0)] = amount;
+            // gaussian distribution
+            d_O1[getIndex(y, x, nx, ny, 0)] = amount * exp(-distance / (radius * radius));
     }
 }
 
@@ -130,11 +133,11 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
             // Distance of point i, j from the origin
             float ds2 = (i - nx / 2) * (i - nx / 2) + (j - ny / 2) * (j - ny / 2);
 
-            if (ds2 < radius2)
-                // if (i == 0)
-                h_O[index] = 100.0;
-            else
-                h_O[index] = 5.0;
+            // if (ds2 < radius2)
+            // if (i == 0)
+            h_O[index] = 100.0 * exp(-(i - nx / 2) * (i - nx / 2) / (10.*10.));
+            // else
+            // h_O[index] = 0.0;
         }
     }
 
@@ -144,7 +147,7 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
     config.dy = 0.005;
     config.dx2 = config.dx * config.dx;
     config.dy2 = config.dy * config.dy;
-    config.dt = config.dx2 * config.dy2 / (2.0 * config.a * (config.dx2 + config.dy2));
+    config.dt = 2. * config.dx2 * config.dy2 / (2.0 * config.a * (config.dx2 + config.dy2));
     // config.dt = config.dx * config.dy / (2.0 * config.a * (config.dx + config.dy));
 
     // streams for reading and computation

@@ -3,7 +3,7 @@
 
 #define UP_SCALE 3.0
 #define MAX_HEAT_RADIUS 60.f // pixels
-#define OUTPUT_EVERY 10
+#define OUTPUT_EVERY 100
 
 Application::Application(std::string t)
 {
@@ -49,7 +49,7 @@ bool Application::onHandleEvent(GF::Event& event)
 	if (GF::Mouse::Right.isPressed()) {
 		if (GF::Mouse::isInsideWindow(window)) {
 			sf::Vector2f pos = GF::Mouse::getPosition(window);
-			addHeat(pos.x / UP_SCALE, pos.y / UP_SCALE, 0.0, heat_radius / UP_SCALE);
+			addHeat(pos.x / UP_SCALE, pos.y / UP_SCALE, -100.0, heat_radius / UP_SCALE);
 		}
 	}
 
@@ -105,7 +105,7 @@ bool Application::onUpdate(const float fElapsedTime, const float fTotalTime)
 	if (step % OUTPUT_EVERY == 0) {
 		for (int y = 0; y < ny; ++y) {
 			for (int x = 0; x < nx; ++x){
-				float value = h_O[y * nx + x] / 100.0;
+				float value = std::min(1.0, std::max(-1.0, h_O[y * nx + x] / 50.0));
 
 				sf::Color color = rgb((value + 1.0) / 2. * 2. / 3.);
 				// sf::Color color = rgb((1. - value)*(1. - value) * 2. / 3.);
