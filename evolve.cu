@@ -6,7 +6,7 @@
 #define BLOCK_SIZE_X 8
 #define BLOCK_SIZE_Y 16
 #define WORK_PER_THREAD 2
-#define TAU 2.5f // damping constant
+#define TAU .3f // damping constant
 
 typedef struct CUDA_Config {
     CUDA_Config() {}
@@ -70,15 +70,26 @@ __device__ void computeCurrentCell(const int x, const int y, const float* in, fl
 
     float current_cell_0 = in[getIndex(y, x, nx, ny, 0)];
     float current_cell_1 = in[getIndex(y, x, nx, ny, 1)];
-    //old
+    // Eq.1 diffusion
     // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt *
     // ((left - 2.0 * current_cell_0 + right) / dx2 +
     // (up - 2.0 * current_cell_0 + down) / dy2);
-    // new
-    out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
+    
+    // Eq.2 damped wave equation
+    // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
+    // out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
+    //                                  ((left - 2.0 * current_cell_0 + right) / dx2 +
+    //                                   (up - 2.0 * current_cell_0 + down) / dy2 - 
+    //                                   TAU * current_cell_1);
+                                       
+    // Eq.2 dampened wave equation + diffused
+    out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1 + .002 * aTimesDt *
+                                     ((left - 2.0 * current_cell_0 + right) / dx2 +
+                                      (up - 2.0 * current_cell_0 + down) / dy2);
     out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
                                      ((left - 2.0 * current_cell_0 + right) / dx2 +
-                                      (up - 2.0 * current_cell_0 + down) / dy2 - TAU * current_cell_1);
+                                      (up - 2.0 * current_cell_0 + down) / dy2 - 
+                                      TAU * current_cell_1);
 }
 
 __global__ void evolveKernel(const float* Un, float* Unp1, const int nx, const int ny,
@@ -135,9 +146,9 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
 
             // if (ds2 < radius2)
             // if (i == 0)
-            h_O[index] = 100.0 * exp(-(i - nx / 2) * (i - nx / 2) / (10.*10.));
+            // h_O[index] = 100.0 * exp(-(i - nx / 2) * (i - nx / 2) / (10.*10.));
             // else
-            // h_O[index] = 0.0;
+            h_O[index] = 0.0;
         }
     }
 
@@ -147,7 +158,7 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
     config.dy = 0.005;
     config.dx2 = config.dx * config.dx;
     config.dy2 = config.dy * config.dy;
-    config.dt = 2. * config.dx2 * config.dy2 / (2.0 * config.a * (config.dx2 + config.dy2));
+    config.dt = config.dx2 * config.dy2 / (2.0 * config.a * (config.dx2 + config.dy2));
     // config.dt = config.dx * config.dy / (2.0 * config.a * (config.dx + config.dy));
 
     // streams for reading and computation

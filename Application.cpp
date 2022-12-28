@@ -105,7 +105,7 @@ bool Application::onUpdate(const float fElapsedTime, const float fTotalTime)
 	if (step % OUTPUT_EVERY == 0) {
 		for (int y = 0; y < ny; ++y) {
 			for (int x = 0; x < nx; ++x){
-				float value = std::min(1.0, std::max(-1.0, h_O[y * nx + x] / 50.0));
+				float value = std::min(1.0, std::max(-1.0, h_O[y * nx + x] / 30.0));
 
 				sf::Color color = rgb((value + 1.0) / 2. * 2. / 3.);
 				// sf::Color color = rgb((1. - value)*(1. - value) * 2. / 3.);
