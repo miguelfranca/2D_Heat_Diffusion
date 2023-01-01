@@ -14,6 +14,8 @@ Application::Application(std::string t)
 	heat_radius = 10.;
 
 	h_O = new float[nx * ny];
+	h_barriers = new bool[nx * ny];
+
 	pixels = new sf::Uint8[nx * ny];
 	texture.create(nx, ny);
 	sprite.setPosition(0, 0);
@@ -26,7 +28,7 @@ Application::Application(std::string t)
 bool Application::onCreate()
 {
 	// prepare GPU
-	prepare(h_O, nx, ny);
+	prepare(h_O, h_barriers, nx, ny);
 
 	sprite.setTexture(texture, true);
 	return true;
@@ -50,6 +52,13 @@ bool Application::onHandleEvent(GF::Event& event)
 		if (GF::Mouse::isInsideWindow(window)) {
 			sf::Vector2f pos = GF::Mouse::getPosition(window);
 			addHeat(pos.x / UP_SCALE, pos.y / UP_SCALE, -100.0, heat_radius / UP_SCALE);
+		}
+	}
+
+	if(GF::Mouse::Wheel.isPressed()){
+		if(GF::Mouse::isInsideWindow(window)){
+			sf::Vector2f pos = GF::Mouse::getPosition(window);
+			addBarrier(pos.x / UP_SCALE, pos.y / UP_SCALE, heat_radius / UP_SCALE);
 		}
 	}
 
@@ -100,16 +109,21 @@ bool Application::onUpdate(const float fElapsedTime, const float fTotalTime)
 {
 	static int step = 0;
 
-	launchKernel(step++, OUTPUT_EVERY, h_O);
+	launchKernel(step++, OUTPUT_EVERY, h_O, h_barriers);
 
 	if (step % OUTPUT_EVERY == 0) {
 		for (int y = 0; y < ny; ++y) {
 			for (int x = 0; x < nx; ++x){
 				float value = std::min(1.0, std::max(-1.0, h_O[y * nx + x] / 30.0));
+				bool is_barrier = h_barriers[y * nx + x];
 
-				sf::Color color = rgb((value + 1.0) / 2. * 2. / 3.);
-				// sf::Color color = rgb((1. - value)*(1. - value) * 2. / 3.);
-				image.setPixel(x, y, color);
+				if(is_barrier)
+					image.setPixel(x, y, GRAY);
+				else {
+					sf::Color color = rgb((value + 1.0) / 2. * 2. / 3.);
+					// sf::Color color = rgb((1. - value)*(1. - value) * 2. / 3.);
+					image.setPixel(x, y, color);
+				}
 			}
 		}
 

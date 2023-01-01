@@ -27,6 +27,8 @@ typedef struct CUDA_Config {
     float* d_O1; // device output 1
     float* d_O2; // device output 2
 
+    bool* barriers; // true for each cell with a barrier, false otherwise
+
     dim3 numBlocks;
     dim3 threadsPerBlock;
 
@@ -53,47 +55,50 @@ int __host__ __device__ getIndex(const int y, const int x, const int width,
 
 __device__ void computeCurrentCell(const int x, const int y, const float* in, float* out,
                                    const int nx, const int ny, const float dx2, const float dy2,
-                                   const float aTimesDt)
+                                   const float aTimesDt, const bool* barriers)
 {
-    float left = (x == 0) ? in[getIndex(y, x + 1, nx, ny, 0)] : in[getIndex(y, x - 1, nx, ny,
-                 0)];
+    float current_cell_0 = in[getIndex(y, x, nx, ny, 0)]; // Phi
+    float current_cell_1 = in[getIndex(y, x, nx, ny, 1)]; // PI
 
-    float right = (x == nx - 1) ? in[getIndex(y, x - 1, nx, ny, 0)] : in[getIndex(y, x + 1,
-                  nx,
-                  nx, 0)];
+    if(barriers[getIndex(y, x, nx, ny, 0)])
+        return;
 
-    float up = (y == 0) ? in[getIndex(y + 1, x, nx, ny, 0)] : in[getIndex(y - 1, x, nx, ny,
-               0)];
+    float left = x == 0 || barriers[getIndex(y, x - 1, nx, ny, 0)] ?
+                 in[getIndex(y, x + 1, nx, ny, 0)] : in[getIndex(y, x - 1, nx, ny, 0)];
 
-    float down = (y == ny - 1) ? in[getIndex(y - 1, x, nx, ny, 0)] : in[getIndex(y + 1, x, nx,
-                 nx, 0)];
+    float right = x == nx - 1 || barriers[getIndex(y, x + 1, nx, ny, 0)] ?
+                  in[getIndex(y, x - 1, nx, ny, 0)] : in[getIndex(y, x + 1, nx, nx, 0)];
 
-    float current_cell_0 = in[getIndex(y, x, nx, ny, 0)];
-    float current_cell_1 = in[getIndex(y, x, nx, ny, 1)];
+    float up = y == 0 || barriers[getIndex(y - 1, x, nx, ny, 0)] ?
+               in[getIndex(y + 1, x, nx, ny, 0)] : in[getIndex(y - 1, x, nx, ny, 0)];
+
+    float down = y == ny - 1 || barriers[getIndex(y + 1, x, nx, ny, 0)] ?
+                 in[getIndex(y - 1, x, nx, ny, 0)] : in[getIndex(y + 1, x, nx, nx, 0)];
+
     // Eq.1 diffusion
     // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt *
-    // ((left - 2.0 * current_cell_0 + right) / dx2 +
-    // (up - 2.0 * current_cell_0 + down) / dy2);
-    
+                                     // ((left - 2.0 * current_cell_0 + right) / dx2 +
+                                      // (up - 2.0 * current_cell_0 + down) / dy2);
+
     // Eq.2 damped wave equation
-    // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
-    // out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
-    //                                  ((left - 2.0 * current_cell_0 + right) / dx2 +
-    //                                   (up - 2.0 * current_cell_0 + down) / dy2 - 
-    //                                   TAU * current_cell_1);
-                                       
-    // Eq.2 dampened wave equation + diffused
-    out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1 + .002 * aTimesDt *
-                                     ((left - 2.0 * current_cell_0 + right) / dx2 +
-                                      (up - 2.0 * current_cell_0 + down) / dy2);
+    out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
     out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
                                      ((left - 2.0 * current_cell_0 + right) / dx2 +
-                                      (up - 2.0 * current_cell_0 + down) / dy2 - 
+                                      (up - 2.0 * current_cell_0 + down) / dy2 -
                                       TAU * current_cell_1);
+
+    // Eq.2 dampened wave equation + diffused
+    // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1 + .002 * aTimesDt *
+    //                                  ((left - 2.0 * current_cell_0 + right) / dx2 +
+    //                                   (up - 2.0 * current_cell_0 + down) / dy2);
+    // out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
+    //                                  ((left - 2.0 * current_cell_0 + right) / dx2 +
+    //                                   (up - 2.0 * current_cell_0 + down) / dy2 -
+    //                                   TAU * current_cell_1);
 }
 
 __global__ void evolveKernel(const float* Un, float* Unp1, const int nx, const int ny,
-                             const float dx2, const float dy2, const float aTimesDt)
+                             const float dx2, const float dy2, const float aTimesDt, const bool* barriers)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -103,7 +108,7 @@ __global__ void evolveKernel(const float* Un, float* Unp1, const int nx, const i
 
             if (j < ny) {
                 // Explicit scheme
-                computeCurrentCell(w, j, Un, Unp1, nx, ny, dx2, dy2, aTimesDt);
+                computeCurrentCell(w, j, Un, Unp1, nx, ny, dx2, dy2, aTimesDt, barriers);
             }
         }
     }
@@ -127,8 +132,23 @@ __global__ void addHeatKernel(const int center_x, const int center_y, const floa
     }
 }
 
+__global__ void addBarrierKernel(const int center_x, const int center_y, bool* barriers, float* d_O1,
+                                 const int nx, const int ny, const float radius)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-void __host__ d_prepare(float* h_O, const int nx, const int ny)
+    if (x < nx && y < ny) {
+        int dx = x - center_x;
+        int dy = y - center_y;
+        int distance = dx * dx + dy * dy;
+
+        if (distance <= radius * radius)
+            barriers[getIndex(y, x, nx, ny, 0)] = true;
+    }
+}
+
+void __host__ d_prepare(float* h_O, bool* h_barriers, const int nx, const int ny)
 {
     // data dimensions
     config.nx = nx;
@@ -149,6 +169,7 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
             // h_O[index] = 100.0 * exp(-(i - nx / 2) * (i - nx / 2) / (10.*10.));
             // else
             h_O[index] = 0.0;
+            h_barriers[index] = false;
         }
     }
 
@@ -169,6 +190,9 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
     cudaMalloc((void**)&config.d_O1, config.numElements * 2 * sizeof(float));
     cudaMalloc((void**)&config.d_O2, config.numElements * 2 * sizeof(float));
 
+    cudaMalloc((void**)&config.barriers, config.numElements * sizeof(bool));
+    cudaMemset(config.barriers, 0, config.numElements * sizeof(bool));
+
     // set PI initial values
     cudaMemset(&config.d_O1[config.numElements], 0, config.numElements * sizeof(float));
     cudaMemset(&config.d_O2[config.numElements], 0, config.numElements * sizeof(float));
@@ -184,11 +208,11 @@ void __host__ d_prepare(float* h_O, const int nx, const int ny)
     config.copy = false;
 }
 
-void __host__ d_launchKernel(const int step, const int outputEvery, float* h_O)
+void __host__ d_launchKernel(const int step, const int outputEvery, float* h_O, bool* h_barriers)
 {
     evolveKernel <<< config.numBlocks, config.threadsPerBlock, 0, config.comp_stream>>>
     (config.d_O1, config.d_O2, config.nx, config.ny, config.dx2, config.dy2,
-     config.a * config.dt);
+     config.a * config.dt, config.barriers);
 
     if (config.copy) {
         int index = 0;
@@ -196,6 +220,12 @@ void __host__ d_launchKernel(const int step, const int outputEvery, float* h_O)
                         config.numElements * sizeof(float),
                         cudaMemcpyDeviceToHost,
                         config.read_stream);
+
+        cudaMemcpyAsync(h_barriers, config.barriers,
+                        config.numElements,
+                        cudaMemcpyDeviceToHost,
+                        config.read_stream);
+
         cudaStreamSynchronize(config.read_stream);
         cudaError_t errorCode = cudaGetLastError();
 
@@ -241,19 +271,24 @@ std::array<int, 3> scalarToRGB(double value)
 void addHeat(const int x, const int y, const float amount, const float radius)
 {
     addHeatKernel <<< config.numBlocks, config.threadsPerBlock, 0, config.comp_stream>>>(x, y,
-            amount, config.d_O1, config.nx,
-            config.ny, radius);
+            amount, config.d_O1, config.nx, config.ny, radius);
+}
+
+void addBarrier(const int x, const int y, const float radius)
+{
+    addBarrierKernel <<< config.numBlocks, config.threadsPerBlock, 0, config.comp_stream>>>(x,
+            y, config.barriers, config.d_O1, config.nx, config.ny, radius);
 }
 
 //################## Wrappers #################
-void prepare(float* h_O, const int nx, const int ny)
+void prepare(float* h_O, bool* h_barriers, const int nx, const int ny)
 {
-    d_prepare(h_O, nx, ny);
+    d_prepare(h_O, h_barriers, nx, ny);
 }
 
-void launchKernel(const int step, const int outputEvery, float* h_O)
+void launchKernel(const int step, const int outputEvery, float* h_O, bool * h_barriers)
 {
-    d_launchKernel(step, outputEvery, h_O);
+    d_launchKernel(step, outputEvery, h_O, h_barriers);
 }
 
 void finalize()

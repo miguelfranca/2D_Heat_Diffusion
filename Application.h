@@ -32,6 +32,8 @@ private:
     int nx, ny;
     
     float* h_O;
+    bool* h_barriers;
+
     sf::Uint8* pixels;
     sf::Texture texture;
     sf::Sprite sprite;
