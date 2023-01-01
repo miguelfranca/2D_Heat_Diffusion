@@ -76,16 +76,16 @@ __device__ void computeCurrentCell(const int x, const int y, const float* in, fl
                  in[getIndex(y - 1, x, nx, ny, 0)] : in[getIndex(y + 1, x, nx, nx, 0)];
 
     // Eq.1 diffusion
-    // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt *
-                                     // ((left - 2.0 * current_cell_0 + right) / dx2 +
-                                      // (up - 2.0 * current_cell_0 + down) / dy2);
+    out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt *
+                                     ((left - 2.0 * current_cell_0 + right) / dx2 +
+                                      (up - 2.0 * current_cell_0 + down) / dy2);
 
     // Eq.2 damped wave equation
-    out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
-    out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
-                                     ((left - 2.0 * current_cell_0 + right) / dx2 +
-                                      (up - 2.0 * current_cell_0 + down) / dy2 -
-                                      TAU * current_cell_1);
+    // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
+    // out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
+    //                                  ((left - 2.0 * current_cell_0 + right) / dx2 +
+    //                                   (up - 2.0 * current_cell_0 + down) / dy2 -
+    //                                   TAU * current_cell_1);
 
     // Eq.2 dampened wave equation + diffused
     // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1 + .002 * aTimesDt *
@@ -122,9 +122,9 @@ __global__ void addHeatKernel(const int center_x, const int center_y, const floa
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (x < nx && y < ny) {
-        int dx = x - center_x;
-        int dy = y - center_y;
-        int distance = dx * dx + dy * dy;
+        float dx = x - center_x;
+        float dy = y - center_y;
+        float distance = dx * dx + dy * dy;
 
         if (distance <= radius * radius)
             // gaussian distribution
@@ -139,9 +139,9 @@ __global__ void addBarrierKernel(const int center_x, const int center_y, bool* b
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (x < nx && y < ny) {
-        int dx = x - center_x;
-        int dy = y - center_y;
-        int distance = dx * dx + dy * dy;
+        float dx = x - center_x;
+        float dy = y - center_y;
+        float distance = dx * dx + dy * dy;
 
         if (distance <= radius * radius)
             barriers[getIndex(y, x, nx, ny, 0)] = true;

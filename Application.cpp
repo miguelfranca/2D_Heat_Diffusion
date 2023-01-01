@@ -3,7 +3,7 @@
 
 #define UP_SCALE 3.0
 #define MAX_HEAT_RADIUS 60.f // pixels
-#define OUTPUT_EVERY 100
+#define OUTPUT_EVERY 10
 
 Application::Application(std::string t)
 {
@@ -37,7 +37,6 @@ bool Application::onCreate()
 // first thing to be called every frame
 bool Application::onHandleEvent(GF::Event& event)
 {
-	if(event.isNothing()) return true;
 
 	// add heat
 	if (GF::Mouse::Left.isPressed()) {
@@ -61,6 +60,7 @@ bool Application::onHandleEvent(GF::Event& event)
 			addBarrier(pos.x / UP_SCALE, pos.y / UP_SCALE, heat_radius / UP_SCALE);
 		}
 	}
+	if(event.isNothing()) return true;
 
 	// change brush size
 	if (GF::Mouse::Wheel.moved(event)) {
