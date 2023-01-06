@@ -140,11 +140,8 @@ bool Application::onUpdate(const float fElapsedTime, const float fTotalTime)
 bool Application::onDraw()
 {
 	window.draw(sprite);
-	// window.draw(GF::Text(std::string("Radius: ") + std::to_string((int)heat_radius),
-	// sf::Vector2f(window.getSize().x - 100, 20)));
-	window.draw(GF::Circle(heat_radius, sf::Vector2f(window.getSize().x - heat_radius - 5,
-	                       heat_radius + 5)));
-	// window.draw(GF::Circle(50, sf::Vector2f(250, 250)));
+	window.draw(GF::Circle(heat_radius, GF::Mouse::getPosition(window), TRANSPARENT, BLACK, 1.0));
+
 	return true;
 }
 
