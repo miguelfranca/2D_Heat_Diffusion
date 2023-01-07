@@ -1,4 +1,4 @@
-# 2D_Heat_Diffusion
+# Heat Diffusion over a 2D Surface
 
 ## Authors
 
