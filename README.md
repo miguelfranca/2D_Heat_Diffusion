@@ -49,3 +49,11 @@ To run simply execute the following command on the base folder
 ```Mouse wheel``` to change the radius of impact of heat/cold
 
 ```Esc``` to exit the application and close the window
+
+
+## Screenshots/GIFs
+
+![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/screenshot1.png?raw=true)
+![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/screenshot2.png?raw=true)
+![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/barrier.gif?raw=true)
+![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/diffusion.gif?raw=true)
