@@ -60,6 +60,7 @@ __device__ void computeCurrentCell(const int x, const int y, const float* in, fl
     float current_cell_0 = in[getIndex(y, x, nx, ny, 0)]; // Phi
     float current_cell_1 = in[getIndex(y, x, nx, ny, 1)]; // PI
 
+    // this cell is a barrier
     if(barriers[getIndex(y, x, nx, ny, 0)])
         return;
 
