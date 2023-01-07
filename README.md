@@ -1,5 +1,9 @@
 # Heat Diffusion over a 2D Surface
 
+This is an interactive heat simulation over 2D surface written in C++ and using SFML for graphics.
+
+You can play around with your mouse adding heat or cold to the simulation while it runs in real-time. You can also add barriers so that the heat can't pass through a certain region and change the mouse's effect radius with the scroll wheel.
+
 ## Authors
 
 - [@Tiago França](https://github.com/TaigoFr)
@@ -57,7 +61,7 @@ To run simply execute the following command on the base folder
 
 ## Screenshots/GIFs
 
-![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/screenshot1.png?raw=true)
-![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/screenshot2.png?raw=true)
 ![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/barrier.gif?raw=true)
 ![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/diffusion.gif?raw=true)
+![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/screenshot1.png?raw=true)
+![](https://github.com/miguelfranca/2D_Heat_Diffusion/blob/main/screenshots-gifs/screenshot2.png?raw=true)
