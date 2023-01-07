@@ -81,7 +81,7 @@ __device__ void computeCurrentCell(const int x, const int y, const float* in, fl
                                      ((left - 2.0 * current_cell_0 + right) / dx2 +
                                       (up - 2.0 * current_cell_0 + down) / dy2);
 
-    // Eq.2 damped wave equation
+    // Eq.2 dampened wave equation
     // out[getIndex(y, x, nx, ny, 0)] = current_cell_0 + aTimesDt * current_cell_1;
     // out[getIndex(y, x, nx, ny, 1)] = current_cell_1 + aTimesDt *
     //                                  ((left - 2.0 * current_cell_0 + right) / dx2 +
