@@ -39,3 +39,13 @@ To run simply execute the following command on the base folder
 ```bash
   run
 ```
+
+## Controls
+
+```Left click + drag``` to add heat to the simulation
+
+```Right click + drag``` to add cold to the simulation
+
+```Mouse wheel``` to change the radius of impact of heat/cold
+
+```Esc``` to exit the application and close the window
