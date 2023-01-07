@@ -1,6 +1,6 @@
 # Heat Diffusion over a 2D Surface
 
-This is an interactive heat simulation over 2D surface written in C++ and using SFML for graphics.
+This is an interactive heat simulation over a 2D surface written in C++ and using SFML for graphics.
 
 You can play around with your mouse adding heat or cold to the simulation while it runs in real-time. You can also add barriers so that the heat can't pass through a certain region and change the mouse's effect radius with the scroll wheel.
 
