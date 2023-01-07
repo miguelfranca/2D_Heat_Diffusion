@@ -1,10 +1,10 @@
 # Heat Diffusion over a 2D Surface
 
-This is an interactive heat simulation over a 2D surface written in C++ and using SFML for graphics.
+This is an interactive heat simulation over a 2D surface written in C++ and using SFML for graphics/input, with the use of CUDA to make the computations on the GPU.
 
 You can play around with your mouse adding heat or cold to the simulation while it runs in real-time. You can also add barriers so that the heat can't pass through a certain region and change the mouse's effect radius with the scroll wheel.
 
-The main focus was to implement a heat diffusion equation but since the wave equation are so similiar we decided to implement it as well. So in the code you can simply choose which equation you want, using an explicit scheme. The file to change would be ```evolve.cu``` inside the ```computeCurrentCell``` function where you can choose one of three equations. We could add some UI for this but oh well.
+The main focus was to implement a heat diffusion equation but since the wave equation is so similiar we decided to implement it as well. So in the code you can simply choose which equation you want, using an explicit scheme. The file to change would be ```evolve.cu``` inside the ```computeCurrentCell``` function where you can choose one of three equations. We could add some UI for this but oh well.
 
 ## Authors
 
