@@ -26,6 +26,12 @@ unpack it and copy the files to your preferred location
   LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path-to-SFML-folder>/lib/
 ```
 
+4 - Download/clone my SFML framework called GraphicsFramework from:
+
+https://github.com/miguelfranca/SFML_GraphicsFramework.git
+
+Place this GraphicsFramework repository on ```../``` relative to this repository.
+You can change this on the Makefile too.
 ## Running
 
 To run simply execute the following command on the base folder
