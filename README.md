@@ -11,27 +11,31 @@ You will need to have a CUDA-Capable GPU and NVCC installed.
 The Makefile uses the the -lcudart flag.
 
 ## Installation
-1 - Download the SFML SDK from: https://www.sfml-dev.org/download/sfml/2.5.1/,
+1 - Run `apt-get install g++` to install g++ 
+
+2 - Download the SFML SDK from: https://www.sfml-dev.org/download/sfml/2.5.1/,
 unpack it and copy the files to your preferred location
 
-2 - Create the following environment variable:
+3 - Create the following environment variable:
 
 ```bash
   SFML_ROOT="<path-to-SFML-folder>"
 ```
 
-3 - Update your library path with:
+4 - Update your library path with:
 
 ```bash
   LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path-to-SFML-folder>/lib/
 ```
 
-4 - Download/clone my SFML framework called GraphicsFramework from:
+5 - Download/clone my SFML framework called GraphicsFramework from:
 
 https://github.com/miguelfranca/SFML_GraphicsFramework.git
 
 Place this GraphicsFramework repository on ```../``` relative to this repository.
 You can change this on the Makefile if you want.
+
+
 ## Running
 
 To run simply execute the following command on the base folder
