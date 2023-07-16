@@ -31,6 +31,8 @@ bool Application::onCreate()
 	prepare(h_O, h_barriers, nx, ny);
 
 	sprite.setTexture(texture, true);
+
+	setExitKey(sf::Keyboard::Escape);
 	return true;
 }
 
